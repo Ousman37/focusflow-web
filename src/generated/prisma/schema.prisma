@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -84,12 +85,12 @@ model Session {
   mode            FocusMode
   startTime       DateTime  @db.Timestamptz(3)
   endTime         DateTime? @db.Timestamptz(3)
-  durationMinutes Int? // ← kept as durationMinutes (consistent with your schema)
+  durationMinutes Int?
   completed       Boolean   @default(false)
   pointsEarned    Int       @default(0)
   notes           String?   @db.Text
 
-  journalEntries JournalEntry[] // ← one session can have multiple journal entries
+  journalEntries JournalEntry[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
