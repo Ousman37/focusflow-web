@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum FocusMode {
+  HYPERFOCUS
+  SCATTERFOCUS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  TRIALING
+  UNPAID
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM_MONTHLY
+  PREMIUM_YEARLY
+}
+
+model User {
+  id               String           @id @default(uuid()) @db.Uuid
+  firebaseUid      String           @unique
+  email            String?          @unique
+  name             String?
+  avatarUrl        String?
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+
+  stripeCustomerId String?          @unique
+  subscription     Subscription?
+  subscriptionId   String?          @unique
+
+  focusPoints      Int              @default(0)
+  streakCurrent    Int              @default(0)
+  streakLongest    Int              @default(0)
+  lastSessionDate  DateTime?        @db.Date
+
+  sessions         Session[]
+  rituals          Ritual[]
+  rewards          Reward[]
+  badges           Badge[]          @relation("UserBadges")
+  userBadges       UserBadge[]
+  journalEntries   JournalEntry[]
+  achievements     UserAchievement[]
+
+  @@index([email])
+  @@index([firebaseUid])
+  @@index([stripeCustomerId])
+  @@map("users")
+}
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String             @unique @db.Uuid
+  stripeSubId        String             @unique
+  plan               SubscriptionPlan
+  status             SubscriptionStatus
+  currentPeriodStart DateTime           @db.Timestamptz(3)
+  currentPeriodEnd   DateTime           @db.Timestamptz(3)
+  trialEnd           DateTime?          @db.Timestamptz(3)
+  cancelAtPeriodEnd  Boolean            @default(false)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+
+  @@index([stripeSubId])
+  @@map("subscriptions")
+}
+
+model Session {
+  id              String        @id @default(uuid()) @db.Uuid
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String        @db.Uuid
+  mode            FocusMode
+  startTime       DateTime      @db.Timestamptz(3)
+  endTime         DateTime?     @db.Timestamptz(3)
+  durationMinutes Int?
+  completed       Boolean       @default(false)
+  pointsEarned    Int           @default(0)
+  notes           String?       @db.Text
+  journalEntries  JournalEntry[] // ← relation: sessions can have multiple journal entries
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, startTime(sort: Desc)])
+  @@map("sessions")
+}
+
+model JournalEntry {
+  id              String    @id @default(uuid()) @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String    @db.Uuid
+  content         String    @db.Text
+  mood            String?   // e.g. "focused", "calm"
+  theme           String?   // e.g. "productivity", "gratitude"
+  durationMinutes Int?      // minutes spent journaling/focusing
+  session         Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sessionId       String?   @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@index([sessionId])
+  @@map("journal_entries")
+}
+
+model Ritual {
+  id             String     @id @default(uuid()) @db.Uuid
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String     @db.Uuid
+  name           String
+  description    String?    @db.Text
+  frequency      String
+  completedToday Boolean    @default(false)
+  lastCompleted  DateTime?  @db.Date
+  streak         Int        @default(0)
+  createdAt      DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime   @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("rituals")
+}
+
+model Reward {
+  id          String     @id @default(uuid()) @db.Uuid
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String     @db.Uuid
+  name        String
+  description String?    @db.Text
+  pointsCost  Int
+  redeemedAt  DateTime?  @db.Timestamptz(3)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("rewards")
+}
+
+model Badge {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique
+  description String?    @db.Text
+  imageUrl    String?
+
+  users       User[]     @relation("UserBadges")
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  userId    String   @db.Uuid
+  badgeId   String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Achievement {
+  id          String           @id @default(uuid()) @db.Uuid
+  slug        String           @unique
+  title       String
+  description String
+  maxProgress Int
+  iconName    String?
+  color       String?
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+
+  users       UserAchievement[]
+
+  @@index([slug])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  userId         String      @db.Uuid
+  achievementId  String      @db.Uuid
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement    Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  progress       Int         @default(0)
+  unlockedAt     DateTime?   @db.Timestamptz(3)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt   @db.Timestamptz(3)
+
+  @@id([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+  @@map("user_achievements")
+}

@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/* ================================
+   Base Theme Application
+================================ */
+
+html,
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Card helper class */
+.bg-card {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+/* Border helper */
+.border-theme {
+  border-color: hsl(var(--border));
+}
+
+/* Light mode defaults */
+:root {
+  --background: 0 0% 100%;
+  /* pure white */
+  --foreground: 222.2 84% 4.9%;
+  /* near black */
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+
+  /* Primary is now the indigo-teal gradient you want */
+  --primary: linear-gradient(to right, #4f46e5, #6366f1, #14b8a6);
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 173 60% 50%;
+  /* teal accent fallback */
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 221 83% 53%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221 83% 53%;
+
+  --radius: 0.75rem;
+}
+
+/* Calm ChatGPT-like dark mode */
+.dark {
+  --background: 220 15% 10%;
+  /* deep charcoal */
+  --foreground: 210 25% 95%;
+  /* soft white */
+
+  --card: 220 14% 18%;
+  /* slightly lighter card */
+  --card-foreground: 210 25% 95%;
+
+  --popover: 220 14% 18%;
+  --popover-foreground: 210 25% 95%;
+
+  /* Primary gradient in dark mode — softer but still vibrant */
+  --primary: linear-gradient(to right, #6366f1, #7c3aed, #0ea5e9);
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 173 55% 45%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 220 14% 22%;
+  --muted-foreground: 215 18% 70%;
+
+  --accent: 221 83% 53%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 63% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 13% 24%;
+  --input: 220 13% 24%;
+  --ring: 221 83% 53%;
+}
+
+/* Glassmorphism utilities */
+@layer utilities {
+  .glass {
+    background-color: color-mix(in srgb, hsl(var(--card)) 70%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.35);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+  }
+
+  .glass-strong {
+    background-color: color-mix(in srgb, hsl(var(--card)) 55%, transparent);
+    backdrop-filter: blur(24px);
+    border: 1px solid hsl(var(--border) / 0.25);
+  }
+
+  .glass-light {
+    background-color: color-mix(in srgb, hsl(var(--card)) 85%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Hover lift */
+  .hover-lift {
+    transition: all 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Fade-in animation */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Thin modern scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* Optional: nicer switches (brighter thumb in dark mode) */
+[data-state="checked"] .switch-thumb {
+  background-color: white !important;
+}
