@@ -133,7 +133,7 @@ export default async function DashboardPage() {
                         {session.mode.toLowerCase()}
                       </p>
                       <p className="text-muted-foreground mt-1 text-sm">
-                        {session.duration ?? 0} min •{" "}
+                        {session.durationMinutes ?? 0} min •
                         {new Date(session.createdAt).toLocaleDateString(
                           "en-GB",
                           {

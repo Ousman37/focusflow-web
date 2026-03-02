@@ -1,8 +1,7 @@
-// src/components/journal/JournalClient.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { format, isSameDay, subDays, differenceInDays, startOfDay } from "date-fns";
+import { format, isSameDay, subDays, differenceInDays } from "date-fns";
 import Confetti from "react-confetti";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,7 +109,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
     const totalEntries = currentEntries.length;
     const totalWords = currentEntries.reduce((sum, e) => sum + (e.content?.trim().split(/\s+/).length || 0), 0);
 
-    // Daily streak
+    // Daily streak for journaling
     let dailyStreak = 0;
     let currentDate = today;
     while (true) {
@@ -120,7 +119,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
       currentDate = subDays(currentDate, 1);
     }
 
-    // Unique tags in last 7 days
+    // Unique tags/moods in last 7 days
     const last7Days = currentEntries.filter((e) => differenceInDays(today, new Date(e.createdAt)) <= 7);
     const uniqueTags = new Set<string>();
     last7Days.forEach((e) => {
@@ -133,12 +132,20 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
       let isUnlocked = false;
 
       switch (ach.id) {
-        case "rookie":        progress = totalEntries; break;
-        case "chronicler":    progress = dailyStreak; break;
-        case "insight":       progress = uniqueTags.size; break;
-        case "wordmaster":    progress = totalWords; break;
-        // Add session-based ones later when you pass session data
-        default: progress = 0;
+        case "rookie":
+          progress = totalEntries;
+          break;
+        case "chronicler":
+          progress = dailyStreak;
+          break;
+        case "insight":
+          progress = uniqueTags.size;
+          break;
+        case "wordmaster":
+          progress = totalWords;
+          break;
+        default:
+          progress = 0;
       }
 
       isUnlocked = progress >= ach.max;
@@ -150,7 +157,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
   const achievements = calculateAchievements(entries);
 
   // ────────────────────────────────────────────────
-  //  Confetti + Sound on unlock
+  //  Confetti + Sound + Backend Sync on unlock
   // ────────────────────────────────────────────────
 
   useEffect(() => {
@@ -166,20 +173,23 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
           unlockSound.current.play().catch(() => {});
         }
 
-        // Sync to backend
+        // Sync achievement to backend (using userId)
         fetch("/api/journal/achievements", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, achievementId: ach.id }),
-        }).catch(() => {});
+          body: JSON.stringify({ userId, achievementId: ach.id, progress: ach.progress }),
+        }).catch((err) => {
+          console.error("Failed to sync achievement:", err);
+        });
 
+        // Clear confetti after 6 seconds
         setTimeout(() => setShowConfetti(null), 6000);
       }
     });
-  }, [entries, achievements, unlockedIds]);
+  }, [achievements, unlockedIds, userId]);
 
   // ────────────────────────────────────────────────
-  //  Save / Edit Handlers
+  //  Save New Entry
   // ────────────────────────────────────────────────
 
   const handleSaveNew = async () => {
@@ -195,13 +205,16 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: newContent,
+          content: newContent.trim(),
           mood: newMood || undefined,
           theme: newTheme || undefined,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to save");
+      }
 
       const newEntry = await res.json();
 
@@ -210,14 +223,17 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
       setNewMood("");
       setNewTheme("");
       toast.success("Entry saved");
-    } catch {
-      toast.error("Failed to save entry");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save entry");
     } finally {
       setSavingNew(false);
     }
   };
 
-  // Edit handler (unchanged, just showing for completeness)
+  // ────────────────────────────────────────────────
+  //  Edit Handlers
+  // ────────────────────────────────────────────────
+
   const startEdit = (entry: JournalEntryDTO) => {
     setEditingId(entry.id);
     setEditContent(entry.content);
@@ -240,31 +256,39 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
       const res = await fetch(`/api/journal/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: editContent }),
+        body: JSON.stringify({ content: editContent.trim() }),
       });
 
-      if (!res.ok) throw new Error("Failed to update");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update");
+      }
 
+      // Optimistic update
       setEntries((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, content: editContent } : e))
+        prev.map((e) => (e.id === id ? { ...e, content: editContent.trim() } : e))
       );
 
       setEditingId(null);
       setEditContent("");
       toast.success("Entry updated");
-    } catch {
-      toast.error("Failed to update entry");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update entry");
     } finally {
       setSavingEdit(false);
     }
   };
 
+  // ────────────────────────────────────────────────
+  //  Render
+  // ────────────────────────────────────────────────
+
   return (
     <div className="mx-auto max-w-4xl space-y-12 py-10">
-      {/* Confetti */}
+      {/* Confetti overlay */}
       {showConfetti && <Confetti recycle={false} numberOfPieces={300} gravity={0.15} />}
 
-      {/* Achievements */}
+      {/* Achievements Section */}
       <Card className="bg-card/60 rounded-2xl border-0 shadow-sm backdrop-blur-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
@@ -441,7 +465,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
                         {entry.content}
                       </p>
                       {(entry.mood || entry.theme) && (
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-2 flex-wrap mt-3">
                           {entry.mood && (
                             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                               Mood: {entry.mood}
@@ -467,19 +491,16 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 }
 
 
-
 // src/components/journal/JournalClient.tsx
 // "use client";
 
 // import { useState, useEffect, useRef } from "react";
-// import { format, isSameDay, subDays, differenceInDays } from "date-fns";
+// import { format, isSameDay, subDays, differenceInDays, startOfDay } from "date-fns";
 // import Confetti from "react-confetti";
 // import { Button } from "@/components/ui/button";
 // import { Textarea } from "@/components/ui/textarea";
 // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // import { Progress } from "@/components/ui/progress";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
 // import {
 //   Select,
 //   SelectContent,
@@ -487,6 +508,8 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //   SelectTrigger,
 //   SelectValue,
 // } from "@/components/ui/select";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
 // import { toast } from "sonner";
 // import {
 //   Edit,
@@ -498,6 +521,10 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //   Tags,
 //   Trophy,
 //   PenTool,
+//   Sunrise,
+//   Zap,
+//   RotateCcw,
+//   Clock,
 //   Target,
 // } from "lucide-react";
 
@@ -522,7 +549,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 
 // type Props = {
 //   entries: JournalEntryDTO[];
-//   userId: string; // assume passed from parent/page
+//   userId: string;
 // };
 
 // export default function JournalClient({ entries: initialEntries, userId }: Props) {
@@ -534,14 +561,13 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //   const [editContent, setEditContent] = useState("");
 //   const [savingNew, setSavingNew] = useState(false);
 //   const [savingEdit, setSavingEdit] = useState(false);
-//   const [unlockedIds, setUnlockedIds] = useState<string[]>([]); // track unlocked achievements
+//   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
 //   const [showConfetti, setShowConfetti] = useState<string | null>(null);
 
-//   // Sound effect ref
+//   // Sound effect
 //   const unlockSound = useRef<HTMLAudioElement | null>(null);
-
 //   useEffect(() => {
-//     unlockSound.current = new Audio("/sounds/unlock-chime.mp3"); // place short chime sound in public/sounds
+//     unlockSound.current = new Audio("/sounds/unlock-chime.mp3");
 //   }, []);
 
 //   // ────────────────────────────────────────────────
@@ -549,53 +575,33 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //   // ────────────────────────────────────────────────
 
 //   const achievementsConfig: Omit<Achievement, "progress" | "isUnlocked">[] = [
-//     {
-//       id: "rookie",
-//       title: "Reflection Rookie",
-//       description: "Write 10 journal entries",
-//       icon: BookOpen,
-//       color: "indigo",
-//       max: 10,
-//     },
-//     {
-//       id: "chronicler",
-//       title: "Daily Chronicler",
-//       description: "Journal on 7 consecutive days",
-//       icon: Calendar,
-//       color: "teal",
-//       max: 7,
-//     },
-//     {
-//       id: "insight",
-//       title: "Insight Hunter",
-//       description: "Use 3+ different moods/themes in one week",
-//       icon: Tags,
-//       color: "purple",
-//       max: 3,
-//     },
-//     {
-//       id: "wordmaster",
-//       title: "Word Master",
-//       description: "Write 5000 words total",
-//       icon: PenTool,
-//       color: "amber",
-//       max: 5000,
-//     },
-//     {
-//       id: "deepdiver",
-//       title: "Deep Diver",
-//       description: "Write 5 entries longer than 500 words each",
-//       icon: Target,
-//       color: "emerald",
-//       max: 5,
-//     },
+//     // Early wins
+//     { id: "morning", title: "Morning Momentum", description: "Start focus before 10 AM (3 times)", icon: Sunrise, color: "yellow", max: 3 },
+//     { id: "quickwin", title: "Quick Win", description: "Finish a 15+ min session", icon: Zap, color: "green", max: 1 },
+//     { id: "backontrack", title: "Back on Track", description: "Session after missing a day", icon: RotateCcw, color: "blue", max: 1 },
+
+//     // Session depth & quality
+//     { id: "deepdive", title: "Deep Dive", description: "Complete a 90+ min focus session", icon: Clock, color: "red", max: 1 },
+//     { id: "flowstate", title: "Flow State", description: "45+ continuous minutes focused", icon: Target, color: "cyan", max: 1 },
+
+//     // Streak & consistency
+//     { id: "fortnight", title: "Fortnight Fighter", description: "14-day streak", icon: Trophy, color: "orange", max: 14 },
+
+//     // Journaling focused
+//     { id: "rookie", title: "Reflection Rookie", description: "Write 10 journal entries", icon: BookOpen, color: "indigo", max: 10 },
+//     { id: "chronicler", title: "Daily Chronicler", description: "Journal after session 7 days in a row", icon: Calendar, color: "teal", max: 7 },
+//     { id: "insight", title: "Insight Hunter", description: "3+ different moods/themes in one week", icon: Tags, color: "purple", max: 3 },
+
+//     // Points & gamification
+//     { id: "wordmaster", title: "Word Master", description: "Write 5000 words total", icon: PenTool, color: "amber", max: 5000 },
 //   ];
 
 //   const calculateAchievements = (currentEntries: JournalEntryDTO[]): Achievement[] => {
 //     const today = new Date();
 
-//     // Total entries
+//     // Total entries & words
 //     const totalEntries = currentEntries.length;
+//     const totalWords = currentEntries.reduce((sum, e) => sum + (e.content?.trim().split(/\s+/).length || 0), 0);
 
 //     // Daily streak
 //     let dailyStreak = 0;
@@ -615,46 +621,22 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //       if (e.theme) uniqueTags.add(e.theme);
 //     });
 
-//     // Total words
-//     const totalWords = currentEntries.reduce((sum, e) => {
-//       return sum + (e.content?.trim().split(/\s+/).length || 0);
-//     }, 0);
-
-//     // Deep entries (>500 words)
-//     const deepEntries = currentEntries.filter((e) => (e.content?.trim().split(/\s+/).length || 0) > 500).length;
-
 //     return achievementsConfig.map((ach) => {
 //       let progress = 0;
 //       let isUnlocked = false;
 
 //       switch (ach.id) {
-//         case "rookie":
-//           progress = totalEntries;
-//           isUnlocked = progress >= ach.max;
-//           break;
-//         case "chronicler":
-//           progress = dailyStreak;
-//           isUnlocked = progress >= ach.max;
-//           break;
-//         case "insight":
-//           progress = uniqueTags.size;
-//           isUnlocked = progress >= ach.max;
-//           break;
-//         case "wordmaster":
-//           progress = totalWords;
-//           isUnlocked = progress >= ach.max;
-//           break;
-//         case "deepdiver":
-//           progress = deepEntries;
-//           isUnlocked = progress >= ach.max;
-//           break;
+//         case "rookie":        progress = totalEntries; break;
+//         case "chronicler":    progress = dailyStreak; break;
+//         case "insight":       progress = uniqueTags.size; break;
+//         case "wordmaster":    progress = totalWords; break;
+//         // Add session-based ones later when you pass session data
+//         default: progress = 0;
 //       }
 
-//       return {
-//         ...ach,
-//         progress,
-//         isUnlocked,
-//       };
+//       isUnlocked = progress >= ach.max;
+
+//       return { ...ach, progress, isUnlocked };
 //     });
 //   };
 
@@ -674,12 +656,10 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //         // Play sound
 //         if (unlockSound.current) {
 //           unlockSound.current.currentTime = 0;
-//           unlockSound.current.play().catch(() => {
-//             // Autoplay blocked — ignore
-//           });
+//           unlockSound.current.play().catch(() => {});
 //         }
 
-//         // Optional: sync unlocked state to backend
+//         // Sync to backend
 //         fetch("/api/journal/achievements", {
 //           method: "POST",
 //           headers: { "Content-Type": "application/json" },
@@ -730,7 +710,47 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //     }
 //   };
 
-//   // ... rest of the edit handlers remain the same ...
+//   // Edit handler (unchanged, just showing for completeness)
+//   const startEdit = (entry: JournalEntryDTO) => {
+//     setEditingId(entry.id);
+//     setEditContent(entry.content);
+//   };
+
+//   const cancelEdit = () => {
+//     setEditingId(null);
+//     setEditContent("");
+//   };
+
+//   const handleSaveEdit = async (id: string) => {
+//     if (!editContent.trim()) {
+//       toast.error("Entry cannot be empty");
+//       return;
+//     }
+
+//     setSavingEdit(true);
+
+//     try {
+//       const res = await fetch(`/api/journal/${id}`, {
+//         method: "PUT",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ content: editContent }),
+//       });
+
+//       if (!res.ok) throw new Error("Failed to update");
+
+//       setEntries((prev) =>
+//         prev.map((e) => (e.id === id ? { ...e, content: editContent } : e))
+//       );
+
+//       setEditingId(null);
+//       setEditContent("");
+//       toast.success("Entry updated");
+//     } catch {
+//       toast.error("Failed to update entry");
+//     } finally {
+//       setSavingEdit(false);
+//     }
+//   };
 
 //   return (
 //     <div className="mx-auto max-w-4xl space-y-12 py-10">
@@ -788,7 +808,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //             disabled={savingNew}
 //           />
 
-//           {/* Mood & Theme */}
+//           {/* Mood & Theme Inputs */}
 //           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 //             <div className="space-y-2">
 //               <Label htmlFor="mood">Mood</Label>
@@ -804,6 +824,8 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //                   <SelectItem value="reflective">Reflective</SelectItem>
 //                   <SelectItem value="motivated">Motivated</SelectItem>
 //                   <SelectItem value="tired">Tired</SelectItem>
+//                   <SelectItem value="excited">Excited</SelectItem>
+//                   <SelectItem value="anxious">Anxious</SelectItem>
 //                 </SelectContent>
 //               </Select>
 //             </div>
@@ -814,7 +836,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //                 id="theme"
 //                 value={newTheme}
 //                 onChange={(e) => setNewTheme(e.target.value)}
-//                 placeholder="Productivity, creativity, gratitude..."
+//                 placeholder="Productivity, creativity, gratitude, relationships..."
 //               />
 //             </div>
 //           </div>
@@ -824,150 +846,6 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //               onClick={handleSaveNew}
 //               disabled={savingNew || !newContent.trim()}
 //               className="min-w-32 bg-linear-to-r from-indigo-600 to-teal-600 text-white hover:from-indigo-700 hover:to-teal-700"
-//             >
-//               {savingNew ? (
-//                 <>
-//                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-//                   Saving...
-//                 </>
-//               ) : (
-//                 "Save Entry"
-//               )}
-//             </Button>
-//           </div>
-//         </CardContent>
-//       </Card>
-
-//       {/* Entries List – unchanged from your previous version */}
-//       <div className="space-y-6">
-//         {/* ... your existing entries list rendering ... */}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-// src/components/journal/JournalClient.tsx
-// "use client";
-
-// import { useState } from "react";
-// import { Button } from "@/components/ui/button";
-// import { Textarea } from "@/components/ui/textarea";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { toast } from "sonner";
-// import { Edit, Save, X, Loader2 } from "lucide-react";
-
-// export type JournalEntryDTO = {
-//   id: string;
-//   content: string;
-//   createdAt: string; // ISO string
-// };
-
-// type Props = {
-//   entries: JournalEntryDTO[];
-// };
-
-// export default function JournalClient({ entries: initialEntries }: Props) {
-//   const [entries, setEntries] = useState(initialEntries);
-//   const [newContent, setNewContent] = useState("");
-//   const [editingId, setEditingId] = useState<string | null>(null);
-//   const [editContent, setEditContent] = useState("");
-//   const [savingNew, setSavingNew] = useState(false);
-//   const [savingEdit, setSavingEdit] = useState(false);
-
-//   const handleSaveNew = async () => {
-//     if (!newContent.trim()) {
-//       toast.error("Write something first");
-//       return;
-//     }
-
-//     setSavingNew(true);
-
-//     try {
-//       const res = await fetch("/api/journal", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ content: newContent }),
-//       });
-
-//       if (!res.ok) throw new Error("Failed to save");
-
-//       const newEntry = await res.json();
-
-//       setEntries([newEntry, ...entries]);
-//       setNewContent("");
-//       toast.success("Entry saved");
-//     } catch {
-//       toast.error("Failed to save entry");
-//     } finally {
-//       setSavingNew(false);
-//     }
-//   };
-
-//   const startEdit = (entry: JournalEntryDTO) => {
-//     setEditingId(entry.id);
-//     setEditContent(entry.content);
-//   };
-
-//   const cancelEdit = () => {
-//     setEditingId(null);
-//     setEditContent("");
-//   };
-
-//   const handleSaveEdit = async (id: string) => {
-//     if (!editContent.trim()) {
-//       toast.error("Entry cannot be empty");
-//       return;
-//     }
-
-//     setSavingEdit(true);
-
-//     try {
-//       const res = await fetch(`/api/journal/${id}`, {
-//         method: "PUT",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ content: editContent }),
-//       });
-
-//       if (!res.ok) throw new Error("Failed to update");
-
-//       // Optimistic update
-//       setEntries((prev) =>
-//         prev.map((e) => (e.id === id ? { ...e, content: editContent } : e))
-//       );
-
-//       setEditingId(null);
-//       setEditContent("");
-//       toast.success("Entry updated");
-//     } catch {
-//       toast.error("Failed to update entry");
-//     } finally {
-//       setSavingEdit(false);
-//     }
-//   };
-
-//   return (
-//     <div className="mx-auto max-w-4xl space-y-12 py-10">
-//       {/* New Entry */}
-//       <Card className="bg-card/60 rounded-2xl border-0 shadow-sm backdrop-blur-md">
-//         <CardHeader>
-//           <CardTitle>New Entry</CardTitle>
-//         </CardHeader>
-//         <CardContent className="space-y-6">
-//           <Textarea
-//             value={newContent}
-//             onChange={(e) => setNewContent(e.target.value)}
-//             placeholder="Today I noticed... I felt... One idea that sparked was..."
-//             className="min-h-40 resize-none"
-//             disabled={savingNew}
-//           />
-
-//           <div className="flex justify-end">
-//             <Button
-//               onClick={handleSaveNew}
-//               disabled={savingNew || !newContent.trim()}
-//               className="min-w-32 bg-indigo-600 text-white hover:bg-indigo-700"
 //             >
 //               {savingNew ? (
 //                 <>
@@ -999,12 +877,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //               >
 //                 <CardHeader className="flex flex-row items-center justify-between pb-2">
 //                   <CardTitle className="text-muted-foreground text-sm">
-//                     {new Date(entry.createdAt).toLocaleDateString("en-US", {
-//                       weekday: "long",
-//                       year: "numeric",
-//                       month: "long",
-//                       day: "numeric",
-//                     })}
+//                     {format(new Date(entry.createdAt), "EEEE, MMMM d, yyyy")}
 //                   </CardTitle>
 
 //                   {!isEditing && (
@@ -1042,7 +915,7 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //                           size="sm"
 //                           onClick={() => handleSaveEdit(entry.id)}
 //                           disabled={savingEdit || !editContent.trim()}
-//                           className="bg-indigo-600 text-white hover:bg-indigo-700"
+//                           className="bg-linear-to-r from-indigo-600 to-teal-600 text-white hover:from-indigo-700 hover:to-teal-700"
 //                         >
 //                           {savingEdit ? (
 //                             <>
@@ -1056,9 +929,25 @@ export default function JournalClient({ entries: initialEntries, userId }: Props
 //                       </div>
 //                     </div>
 //                   ) : (
-//                     <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-//                       {entry.content}
-//                     </p>
+//                     <div className="space-y-2">
+//                       <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+//                         {entry.content}
+//                       </p>
+//                       {(entry.mood || entry.theme) && (
+//                         <div className="flex gap-2 flex-wrap">
+//                           {entry.mood && (
+//                             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+//                               Mood: {entry.mood}
+//                             </span>
+//                           )}
+//                           {entry.theme && (
+//                             <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
+//                               Theme: {entry.theme}
+//                             </span>
+//                           )}
+//                         </div>
+//                       )}
+//                     </div>
 //                   )}
 //                 </CardContent>
 //               </Card>

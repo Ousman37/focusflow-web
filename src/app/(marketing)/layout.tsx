@@ -1,16 +1,10 @@
-// import GlobalHeader from "@/components/layout/GlobalHeader";
-// import GlobalFooter from "@/components/layout/GlobalFooter";
+// src/app/(marketing)/layout.tsx
+import type { ReactNode } from "react";
 
-// export default function MarketingLayout({
-//   children,
-// }: {
-//   children: React.ReactNode;
-// }) {
-//   return (
-//     <>
-//       <GlobalHeader />
-//       {children}
-//       <GlobalFooter />
-//     </>
-//   );
-// }
+export default function MarketingLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
