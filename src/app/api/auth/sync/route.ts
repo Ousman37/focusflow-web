@@ -1,3 +1,5 @@
+//src/app/api/auth/sync/route.ts
+
 import { NextResponse } from "next/server";
 import { db } from "@/lib/prisma";
 
@@ -16,11 +18,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Ensure DB connection works
+    // Check if user exists
     let user = await db.user.findUnique({
       where: { firebaseUid },
     });
 
+    // Create user if not exists
     if (!user) {
       user = await db.user.create({
         data: {
@@ -35,13 +38,15 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
+    // 🔥 Production-safe cookie
     response.cookies.set({
       name: "firebaseUid",
       value: firebaseUid,
       httpOnly: true,
-      secure: true, // always true in production (Vercel is HTTPS)
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none", // <-- critical fix
       path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
     return response;
