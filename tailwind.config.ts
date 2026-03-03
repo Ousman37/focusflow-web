@@ -1,14 +1,15 @@
-// tailwind.config.ts  ← this is perfect now
-import type { Config } from "tailwindcss";
+// tailwind.config.ts
 import animate from "tailwindcss-animate";
 
 export default {
   darkMode: "class",
+
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+
   theme: {
     container: {
       center: true,
@@ -75,7 +76,10 @@ export default {
     },
   },
   plugins: [animate],
-} satisfies Config;
+} satisfies import("tailwindcss").Config;
+
+
+
 // import type { Config } from "tailwindcss";
 // import animate from "tailwindcss-animate";
 
