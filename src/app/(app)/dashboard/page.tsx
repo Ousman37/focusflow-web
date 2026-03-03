@@ -1,5 +1,3 @@
-// src/app/(app)/dashboard/page.tsx
-
 import { db } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -39,15 +37,20 @@ export default async function DashboardPage() {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
           <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-          <p className="mt-4 text-lg">Please sign in to view your dashboard</p>
+          <p className="mt-4 text-lg">
+            Please sign in to view your dashboard
+          </p>
         </div>
       </div>
     );
   }
 
-  const { recentSessions, error } = await (async () => {
+  const dashboardData: {
+    recentSessions: RecentSession[];
+    error: string | null;
+  } = await (async () => {
     try {
-      const sessions = await db.session.findMany({
+      const sessions: RecentSession[] = await db.session.findMany({
         where: {
           userId: user.id,
           completed: true,
@@ -57,15 +60,21 @@ export default async function DashboardPage() {
         select: sessionSelect,
       });
 
-      return { recentSessions: sessions, error: null as string | null };
+      return {
+        recentSessions: sessions,
+        error: null,
+      };
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
+
       return {
-        recentSessions: [] as RecentSession[],
+        recentSessions: [],
         error: "Failed to load some dashboard data. Try refreshing.",
       };
     }
   })();
+
+  const { recentSessions, error } = dashboardData;
 
   const totalPoints = recentSessions.reduce(
     (sum, s) => sum + (s.pointsEarned ?? 0),
@@ -129,7 +138,6 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-background px-5 py-10 md:px-10 md:py-14">
       <div className="mx-auto max-w-7xl space-y-12 md:space-y-16">
-
         {/* Hero */}
         <div className="rounded-3xl bg-card/75 p-7 shadow-xl backdrop-blur-xl md:p-10">
           <h1 className="text-4xl font-bold text-foreground md:text-5xl">
@@ -282,6 +290,293 @@ function StatCard({
     </div>
   );
 }
+
+
+
+// src/app/(app)/dashboard/page.tsx
+
+// import { db } from "@/lib/prisma";
+// import { Button } from "@/components/ui/button";
+// import { Progress } from "@/components/ui/progress";
+// import { cn } from "@/lib/utils";
+// import { getServerSessionUser } from "@/lib/auth";
+// import Link from "next/link";
+// import DailyQuote from "@/components/common/DailyQuote";
+// import { Flame, AlertCircle } from "lucide-react";
+// import { Prisma } from "@prisma/client";
+// import type { JSX } from "react";
+
+// /* ---------------------------------- */
+// /* Prisma Select (Strongly Typed)    */
+// /* ---------------------------------- */
+
+// const sessionSelect = Prisma.validator<Prisma.SessionSelect>()({
+//   id: true,
+//   mode: true,
+//   durationMinutes: true,
+//   pointsEarned: true,
+//   createdAt: true,
+// });
+
+// type RecentSession = Prisma.SessionGetPayload<{
+//   select: typeof sessionSelect;
+// }>;
+
+// /* ---------------------------------- */
+// /* Dashboard Page                    */
+// /* ---------------------------------- */
+
+// export default async function DashboardPage() {
+//   const user = await getServerSessionUser();
+
+//   if (!user) {
+//     return (
+//       <div className="flex min-h-screen items-center justify-center bg-background">
+//         <div className="text-center text-muted-foreground">
+//           <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+//           <p className="mt-4 text-lg">Please sign in to view your dashboard</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   const { recentSessions, error } = await (async () => {
+//     try {
+//       const sessions = await db.session.findMany({
+//         where: {
+//           userId: user.id,
+//           completed: true,
+//         },
+//         orderBy: { createdAt: "desc" },
+//         take: 7,
+//         select: sessionSelect,
+//       });
+
+//       return { recentSessions: sessions, error: null as string | null };
+//     } catch (err) {
+//       console.error("Dashboard data fetch error:", err);
+//       return {
+//         recentSessions: [] as RecentSession[],
+//         error: "Failed to load some dashboard data. Try refreshing.",
+//       };
+//     }
+//   })();
+
+//   const totalPoints = recentSessions.reduce(
+//     (sum, s) => sum + (s.pointsEarned ?? 0),
+//     0
+//   );
+
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+
+//   const sessionsToday = recentSessions.filter((s) => {
+//     const sessionDate = new Date(s.createdAt);
+//     return sessionDate >= today;
+//   }).length;
+
+//   let currentStreak = 0;
+
+//   if (recentSessions.length > 0) {
+//     let streak = 1;
+//     let prevDate = new Date(recentSessions[0].createdAt);
+//     prevDate.setHours(0, 0, 0, 0);
+
+//     for (let i = 1; i < recentSessions.length; i++) {
+//       const currDate = new Date(recentSessions[i].createdAt);
+//       currDate.setHours(0, 0, 0, 0);
+
+//       const diffDays = Math.round(
+//         (prevDate.getTime() - currDate.getTime()) /
+//           (1000 * 60 * 60 * 24)
+//       );
+
+//       if (diffDays === 1) {
+//         streak++;
+//       } else if (diffDays > 1) {
+//         break;
+//       }
+
+//       prevDate = currDate;
+//     }
+
+//     currentStreak = streak;
+//   }
+
+//   const weeklyGoal = 10;
+//   const weeklySessions = recentSessions.length;
+//   const weeklyProgress = Math.min(
+//     100,
+//     Math.round((weeklySessions / weeklyGoal) * 100)
+//   );
+
+//   const goalEmoji =
+//     weeklyProgress >= 100
+//       ? "🔥"
+//       : weeklyProgress >= 75
+//       ? "😎"
+//       : weeklyProgress >= 50
+//       ? "🙂"
+//       : weeklyProgress >= 25
+//       ? "😐"
+//       : "😴";
+
+//   return (
+//     <div className="min-h-screen bg-background px-5 py-10 md:px-10 md:py-14">
+//       <div className="mx-auto max-w-7xl space-y-12 md:space-y-16">
+
+//         {/* Hero */}
+//         <div className="rounded-3xl bg-card/75 p-7 shadow-xl backdrop-blur-xl md:p-10">
+//           <h1 className="text-4xl font-bold text-foreground md:text-5xl">
+//             Welcome back, {user.name?.split(" ")[0] || "Focus Master"}
+//           </h1>
+//           <p className="mt-3 text-lg text-muted-foreground">
+//             Your focus builds your future.
+//           </p>
+
+//           <div className="mt-6">
+//             <DailyQuote />
+//           </div>
+
+//           <div className="mt-8 flex flex-wrap gap-4">
+//             <Link href="/focus/hyper">
+//               <Button size="lg">Start Hyperfocus Session</Button>
+//             </Link>
+//             <Link href="/journal">
+//               <Button size="lg" variant="outline">
+//                 Open Scatterfocus Journal
+//               </Button>
+//             </Link>
+//           </div>
+//         </div>
+
+//         {error && (
+//           <div className="rounded-2xl bg-destructive/10 p-6 text-center text-destructive">
+//             <AlertCircle className="mx-auto h-8 w-8" />
+//             <p className="mt-2">{error}</p>
+//           </div>
+//         )}
+
+//         {/* Stats */}
+//         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+//           <StatCard
+//             title="Focus Points"
+//             value={totalPoints.toLocaleString()}
+//             trend="All-time total"
+//             color="text-teal-600 dark:text-teal-400"
+//           />
+//           <StatCard
+//             title="Sessions Today"
+//             value={sessionsToday.toString()}
+//             trend="Daily momentum"
+//             color="text-indigo-600 dark:text-indigo-400"
+//           />
+//           <StatCard
+//             title="Current Streak"
+//             value={
+//               currentStreak > 0 ? (
+//                 <span className="flex items-center gap-2">
+//                   {currentStreak}
+//                   <Flame className="h-6 w-6 text-amber-500" />
+//                 </span>
+//               ) : (
+//                 "0"
+//               )
+//             }
+//             trend={currentStreak > 0 ? "days strong" : "Start your streak!"}
+//             color="text-amber-600 dark:text-amber-400"
+//           />
+//           <StatCard
+//             title="Weekly Sessions"
+//             value={weeklySessions.toString()}
+//             trend={`Goal: ${weeklyGoal}`}
+//             color="text-purple-600 dark:text-purple-400"
+//           />
+//         </div>
+
+//         {/* Weekly Goal */}
+//         <div className="rounded-3xl bg-card/70 p-8 text-center shadow-xl backdrop-blur-xl">
+//           <h2 className="text-2xl font-semibold text-foreground">
+//             Weekly Goal Progress
+//           </h2>
+
+//           <p className="mt-2 text-muted-foreground">
+//             {weeklySessions} / {weeklyGoal} sessions completed
+//           </p>
+
+//           <div className="mt-8 flex flex-col items-center space-y-6">
+//             <div className="text-7xl md:text-8xl">{goalEmoji}</div>
+
+//             <div className="w-full max-w-md">
+//               <Progress value={weeklyProgress} className="h-5 rounded-full" />
+//             </div>
+
+//             <p className="text-sm text-muted-foreground">
+//               {weeklyProgress}% complete
+//             </p>
+//           </div>
+//         </div>
+
+//         {/* Recent Sessions */}
+//         <div className="rounded-3xl bg-card/70 p-6 shadow-xl md:p-8">
+//           <h2 className="text-2xl font-semibold text-foreground">
+//             Recent Focus Sessions
+//           </h2>
+
+//           <div className="mt-6 space-y-4">
+//             {recentSessions.length === 0 ? (
+//               <p className="py-10 text-center text-muted-foreground">
+//                 No sessions yet — start focusing today!
+//               </p>
+//             ) : (
+//               recentSessions.map((session) => (
+//                 <div
+//                   key={session.id}
+//                   className="flex items-center justify-between rounded-2xl bg-card/50 p-5 hover:bg-muted/50"
+//                 >
+//                   <div>
+//                     <p className="font-medium capitalize text-foreground">
+//                       {session.mode.toLowerCase()}
+//                     </p>
+//                     <p className="mt-1 text-sm text-muted-foreground">
+//                       {session.durationMinutes ?? 0} min •{" "}
+//                       {new Date(session.createdAt).toLocaleDateString("en-GB")}
+//                     </p>
+//                   </div>
+//                   <p className="text-lg font-semibold text-teal-600 dark:text-teal-400">
+//                     +{session.pointsEarned ?? 0} pts
+//                   </p>
+//                 </div>
+//               ))
+//             )}
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+// function StatCard({
+//   title,
+//   value,
+//   trend,
+//   color,
+// }: {
+//   title: string;
+//   value: string | JSX.Element;
+//   trend: string;
+//   color: string;
+// }) {
+//   return (
+//     <div className="rounded-3xl bg-card/70 p-6 shadow-md hover:shadow-lg">
+//       <p className="text-sm text-muted-foreground">{title}</p>
+//       <p className={cn("mt-3 text-3xl font-bold md:text-4xl", color)}>
+//         {value}
+//       </p>
+//       <p className="mt-2 text-sm text-muted-foreground">{trend}</p>
+//     </div>
+//   );
+// }
 
 // // src/app/(app)/dashboard/page.tsx
 // import { db } from "@/lib/prisma";
