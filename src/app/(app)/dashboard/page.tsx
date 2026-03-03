@@ -8,9 +8,9 @@ import Link from "next/link";
 import DailyQuote from "@/components/common/DailyQuote";
 import { Flame, AlertCircle } from "lucide-react";
 import type { Prisma } from "@prisma/client";
-import { JSX } from "react";
+import { JSX } from "react/jsx-dev-runtime";
 
-// Define the exact shape of each session (matches your select)
+// Define exact shape of each session (matches your select fields)
 type RecentSession = Prisma.SessionGetPayload<{
   select: {
     id: true;
@@ -68,7 +68,6 @@ export default async function DashboardPage() {
       return sessionDate >= today;
     }).length;
 
-    // Calculate current streak (consecutive days)
     if (recentSessions.length > 0) {
       let streak = 1;
       let prevDate = new Date(recentSessions[0].createdAt);
@@ -133,7 +132,7 @@ export default async function DashboardPage() {
             <Link href="/focus/hyper">
               <Button
                 size="lg"
-                className="bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:from-indigo-700 hover:to-purple-700 hover:shadow-indigo-500/40 active:scale-[0.98]"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:from-indigo-700 hover:to-purple-700 hover:shadow-indigo-500/40 active:scale-[0.98]"
               >
                 Start Hyperfocus Session
               </Button>
@@ -310,7 +309,6 @@ function getGoalEmoji(percent: number) {
   if (percent >= 25) return "😐";
   return "😴";
 }
-
 // src/app/(app)/dashboard/page.tsx
 // import { db } from "@/lib/prisma";
 // import { Button } from "@/components/ui/button";
