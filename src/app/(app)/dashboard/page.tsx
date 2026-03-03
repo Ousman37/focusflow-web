@@ -45,64 +45,67 @@ export default async function DashboardPage() {
     );
   }
 
-  let recentSessions: RecentSession[] = [];
-  let totalPoints = 0;
-  let sessionsToday = 0;
+  const { recentSessions, error } = await (async () => {
+    try {
+      const sessions = await db.session.findMany({
+        where: {
+          userId: user.id,
+          completed: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 7,
+        select: sessionSelect,
+      });
+
+      return { recentSessions: sessions, error: null as string | null };
+    } catch (err) {
+      console.error("Dashboard data fetch error:", err);
+      return {
+        recentSessions: [] as RecentSession[],
+        error: "Failed to load some dashboard data. Try refreshing.",
+      };
+    }
+  })();
+
+  const totalPoints = recentSessions.reduce(
+    (sum, s) => sum + (s.pointsEarned ?? 0),
+    0
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sessionsToday = recentSessions.filter((s) => {
+    const sessionDate = new Date(s.createdAt);
+    return sessionDate >= today;
+  }).length;
+
   let currentStreak = 0;
-  let error: string | null = null;
 
-  try {
-    recentSessions = await db.session.findMany({
-      where: {
-        userId: user.id,
-        completed: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 7,
-      select: sessionSelect,
-    });
+  if (recentSessions.length > 0) {
+    let streak = 1;
+    let prevDate = new Date(recentSessions[0].createdAt);
+    prevDate.setHours(0, 0, 0, 0);
 
-    totalPoints = recentSessions.reduce(
-      (sum, s) => sum + (s.pointsEarned ?? 0),
-      0
-    );
+    for (let i = 1; i < recentSessions.length; i++) {
+      const currDate = new Date(recentSessions[i].createdAt);
+      currDate.setHours(0, 0, 0, 0);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+      const diffDays = Math.round(
+        (prevDate.getTime() - currDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
 
-    sessionsToday = recentSessions.filter((s) => {
-      const sessionDate = new Date(s.createdAt);
-      return sessionDate >= today;
-    }).length;
-
-    if (recentSessions.length > 0) {
-      let streak = 1;
-      let prevDate = new Date(recentSessions[0].createdAt);
-      prevDate.setHours(0, 0, 0, 0);
-
-      for (let i = 1; i < recentSessions.length; i++) {
-        const currDate = new Date(recentSessions[i].createdAt);
-        currDate.setHours(0, 0, 0, 0);
-
-        const diffDays = Math.round(
-          (prevDate.getTime() - currDate.getTime()) /
-            (1000 * 60 * 60 * 24)
-        );
-
-        if (diffDays === 1) {
-          streak++;
-        } else if (diffDays > 1) {
-          break;
-        }
-
-        prevDate = currDate;
+      if (diffDays === 1) {
+        streak++;
+      } else if (diffDays > 1) {
+        break;
       }
 
-      currentStreak = streak;
+      prevDate = currDate;
     }
-  } catch (err) {
-    console.error("Dashboard data fetch error:", err);
-    error = "Failed to load some dashboard data. Try refreshing.";
+
+    currentStreak = streak;
   }
 
   const weeklyGoal = 10;
@@ -152,7 +155,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="rounded-2xl bg-destructive/10 p-6 text-center text-destructive">
             <AlertCircle className="mx-auto h-8 w-8" />
@@ -259,10 +261,6 @@ export default async function DashboardPage() {
   );
 }
 
-/* ---------------------------------- */
-/* Stat Card Component                */
-/* ---------------------------------- */
-
 function StatCard({
   title,
   value,
@@ -284,7 +282,6 @@ function StatCard({
     </div>
   );
 }
-
 
 // // src/app/(app)/dashboard/page.tsx
 // import { db } from "@/lib/prisma";
