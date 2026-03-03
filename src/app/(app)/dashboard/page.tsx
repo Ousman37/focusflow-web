@@ -8,9 +8,9 @@ import Link from "next/link";
 import DailyQuote from "@/components/common/DailyQuote";
 import { Flame, AlertCircle } from "lucide-react";
 import type { Prisma } from "@prisma/client";
-import { JSX } from "react/jsx-dev-runtime";
+import { JSX } from "react";
 
-// Define exact shape of each session (matches your select fields)
+// Explicit type for the selected session fields
 type RecentSession = Prisma.SessionGetPayload<{
   select: {
     id: true;
@@ -261,7 +261,7 @@ export default async function DashboardPage() {
               size="lg"
               className={cn(
                 "h-14 min-w-60 text-lg font-medium",
-                "bg-linear-to-r from-indigo-600 to-indigo-500",
+                "bg-gradient-to-r from-indigo-600 to-indigo-500",
                 "text-white shadow-lg shadow-indigo-500/25",
                 "hover:from-indigo-700 hover:to-indigo-600 hover:shadow-xl hover:shadow-indigo-500/35",
                 "active:scale-[0.98]",
@@ -309,6 +309,9 @@ function getGoalEmoji(percent: number) {
   if (percent >= 25) return "😐";
   return "😴";
 }
+
+
+
 // src/app/(app)/dashboard/page.tsx
 // import { db } from "@/lib/prisma";
 // import { Button } from "@/components/ui/button";
