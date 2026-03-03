@@ -1,7 +1,8 @@
-// src/app/api/auth/sync/route.ts
-
 import { NextResponse } from "next/server";
 import { db } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
@@ -29,11 +30,16 @@ export async function POST(req: Request) {
       });
     }
 
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json(
+      { success: true },
+      { status: 200 }
+    );
 
-    response.cookies.set("firebaseUid", firebaseUid, {
+    response.cookies.set({
+      name: "firebaseUid",
+      value: firebaseUid,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true, // always true in production (Vercel is HTTPS)
       sameSite: "lax",
       path: "/",
     });
@@ -48,7 +54,6 @@ export async function POST(req: Request) {
     );
   }
 }
-
 
 // export async function POST(req: Request) {
 //   const { firebaseUid, email } = await req.json();
