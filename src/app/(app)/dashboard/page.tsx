@@ -132,7 +132,7 @@ export default async function DashboardPage() {
             <Link href="/focus/hyper">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:from-indigo-700 hover:to-purple-700 hover:shadow-indigo-500/40 active:scale-[0.98]"
+                className="bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:from-indigo-700 hover:to-purple-700 hover:shadow-indigo-500/40 active:scale-[0.98]"
               >
                 Start Hyperfocus Session
               </Button>

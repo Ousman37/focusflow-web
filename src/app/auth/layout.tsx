@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="
-      relative flex min-h-screen flex-col 
+      relative flex min-h-screen flex-col
       bg-linear-to-br from-background via-background/95 to-background/90
       px-4 py-12
     ">
@@ -12,17 +12,3 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-
-
-
-// src/app/(auth)/layout.tsx
-// import type { ReactNode } from "react";
-
-// export default function AuthLayout({ children }: { children: ReactNode }) {
-//   return (
-//     <div className="relative flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
-//       {children}
-//     </div>
-//   );
-// }
