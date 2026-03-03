@@ -20,7 +20,7 @@ export default async function JournalPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const serializedEntries: JournalEntryDTO[] = entries.map((entry) => ({
+  const serializedEntries: JournalEntryDTO[] = entries.map((entry: typeof entries[number]) => ({
     id: entry.id,
     content: entry.content,
     createdAt: entry.createdAt.toISOString(),
