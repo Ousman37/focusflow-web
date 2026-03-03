@@ -261,7 +261,7 @@ export default async function DashboardPage() {
               size="lg"
               className={cn(
                 "h-14 min-w-60 text-lg font-medium",
-                "bg-gradient-to-r from-indigo-600 to-indigo-500",
+                "bg-linear-to-r from-indigo-600 to-indigo-500",
                 "text-white shadow-lg shadow-indigo-500/25",
                 "hover:from-indigo-700 hover:to-indigo-600 hover:shadow-xl hover:shadow-indigo-500/35",
                 "active:scale-[0.98]",

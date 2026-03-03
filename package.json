@@ -58,13 +58,14 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/tailwindcss": "^3.0.11",
     "autoprefixer": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.12",
     "postcss": "^8.0.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "prisma": "^7.4.2",
+    "prisma": "^6.19.2",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
