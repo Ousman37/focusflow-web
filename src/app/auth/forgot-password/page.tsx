@@ -1,7 +1,7 @@
 // src/app/auth/forgot-password/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getFirebaseErrorMessage } from "@/lib/firebase-errors";
 
 /* ------------------ */
 /* Validation Schema  */
@@ -37,6 +38,9 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (redirectTimer.current) clearTimeout(redirectTimer.current); }, []);
 
   const {
     register,
@@ -56,12 +60,9 @@ export default function ForgotPasswordPage() {
         "Reset link sent! Check your email (including spam folder)."
       );
 
-      // Optional: redirect to login after a few seconds
-      setTimeout(() => {
-        router.push("/auth/login");
-      }, 4000);
+      redirectTimer.current = setTimeout(() => router.push("/auth/login"), 4000);
     } catch (error: any) {
-      toast.error(error.message || "Failed to send reset link");
+      toast.error(getFirebaseErrorMessage(error.code) ?? error.message);
     } finally {
       setLoading(false);
     }
@@ -83,7 +84,7 @@ export default function ForgotPasswordPage() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(onSubmit)(e); }} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground">
                 Email

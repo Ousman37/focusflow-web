@@ -1,7 +1,12 @@
-// src/app/(auth)/layout.tsx
+// src/app/auth/layout.tsx
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import { getServerSessionUser } from "@/lib/auth";
 
-export default function AuthLayout({ children }: { children: ReactNode }) {
+export default async function AuthLayout({ children }: { children: ReactNode }) {
+  const user = await getServerSessionUser();
+  if (user) redirect("/dashboard");
+
   return (
     <div className="
       relative flex min-h-screen flex-col

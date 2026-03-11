@@ -43,7 +43,7 @@ export default function DashboardHeader({ user }: Props) {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/logout", { method: "POST" });
       toast.success("Logged out successfully");
       router.push("/auth/login");
     } catch (error) {

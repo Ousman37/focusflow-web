@@ -1,17 +1,15 @@
 // src/lib/auth.ts
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { db } from "./prisma";
 
-export async function getServerSessionUser() {
-  const cookieStore = cookies();
-  const firebaseUid = (await cookieStore).get("firebaseUid")?.value;
+// cache() deduplicates DB calls within a single request render tree
+export const getServerSessionUser = cache(async () => {
+  const cookieStore = await cookies();
+  const firebaseUid = cookieStore.get("firebaseUid")?.value;
 
   if (!firebaseUid) return null;
 
-  const user = await db.user.findUnique({
-    where: { firebaseUid },
-  });
-
-  return user;
-}
+  return db.user.findUnique({ where: { firebaseUid } });
+});

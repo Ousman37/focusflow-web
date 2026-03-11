@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getFirebaseErrorMessage } from "@/lib/firebase-errors";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -80,18 +81,20 @@ export default function SignupPage() {
         body: JSON.stringify({
           firebaseUid: cred.user.uid,
           email: cred.user.email,
+          name: data.name,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to sync user");
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "Failed to sync user");
       }
 
-      toast.success("Account created! Welcome to FocusFlow 🎉");
+      toast.success("Account created! Welcome to FocusFlow");
 
       router.replace("/dashboard");
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong");
+      toast.error(getFirebaseErrorMessage(error.code) ?? error.message);
     } finally {
       setLoading(false);
     }
@@ -113,18 +116,21 @@ export default function SignupPage() {
         body: JSON.stringify({
           firebaseUid: cred.user.uid,
           email: cred.user.email,
+          name: cred.user.displayName,
+          avatarUrl: cred.user.photoURL,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to sync user");
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "Failed to sync user");
       }
 
-      toast.success("Welcome to FocusFlow 🎉");
+      toast.success("Welcome to FocusFlow");
 
       router.replace("/dashboard");
     } catch (error: any) {
-      toast.error(error.message || "Google signup failed");
+      toast.error(getFirebaseErrorMessage(error.code) ?? error.message);
     } finally {
       setLoading(false);
     }
@@ -148,7 +154,7 @@ export default function SignupPage() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(onSubmit)(e); }} className="space-y-6">
             <div className="space-y-5">
               <div className="grid gap-2">
                 <Label htmlFor="name" className="text-foreground">
@@ -318,11 +324,6 @@ export default function SignupPage() {
 
 
 
-//src/app/auth/signup/page.tsx
-
-// "use client";
-
-// import { zodResolver } from "@hookform/resolvers/zod";
 // import { useForm } from "react-hook-form";
 // import * as z from "zod";
 // import { toast } from "sonner";

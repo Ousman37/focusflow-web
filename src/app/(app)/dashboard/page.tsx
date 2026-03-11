@@ -7,19 +7,7 @@ import { getServerSessionUser } from "@/lib/auth";
 import Link from "next/link";
 import DailyQuote from "@/components/common/DailyQuote";
 import { Flame, AlertCircle } from "lucide-react";
-import type { Prisma } from "@prisma/client";
 import { JSX } from "react";
-
-// Explicit type for the selected session fields
-type RecentSession = Prisma.SessionGetPayload<{
-  select: {
-    id: true;
-    mode: true;
-    durationMinutes: true;
-    pointsEarned: true;
-    createdAt: true;
-  };
-}>;
 
 export default async function DashboardPage() {
   const user = await getServerSessionUser();
@@ -35,11 +23,18 @@ export default async function DashboardPage() {
     );
   }
 
-  let recentSessions: RecentSession[] = [];
+  let recentSessions: {
+    id: string;
+    mode: string;
+    durationMinutes: number | null;
+    pointsEarned: number;
+    createdAt: Date;
+  }[] = [];
   let totalPoints = 0;
   let sessionsToday = 0;
   let currentStreak = 0;
   let error: string | null = null;
+
   try {
     recentSessions = await db.session.findMany({
       where: {
@@ -204,13 +199,11 @@ export default async function DashboardPage() {
             {weeklySessions} / {weeklyGoal} sessions completed
           </p>
 
-          <div className="mx-auto mt-8 w-48">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center justify-center text-8xl">
-                {getGoalEmoji(weeklyProgress)}
-              </div>
-              <Progress value={weeklyProgress} className="h-4 rounded-full" />
+          <div className="mx-auto mt-6 w-48">
+            <div className="mb-5 text-7xl leading-none">
+              {getGoalEmoji(weeklyProgress)}
             </div>
+            <Progress value={weeklyProgress} className="h-4 rounded-full" />
           </div>
         </div>
 
@@ -300,15 +293,6 @@ function StatCard({
     </div>
   );
 }
-
-function getGoalEmoji(percent: number) {
-  if (percent >= 100) return "🔥";
-  if (percent >= 75) return "😎";
-  if (percent >= 50) return "🙂";
-  if (percent >= 25) return "😐";
-  return "😴";
-}
-
 
 
 // src/app/(app)/dashboard/page.tsx
