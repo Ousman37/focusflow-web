@@ -1,7 +1,10 @@
 // prisma.config.ts
 
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { config } from "dotenv";
+// Load .env.local first (Next.js convention), then .env as fallback
+config({ path: ".env.local" });
+config();
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -9,6 +12,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: process.env.DATABASE_URL!,
   },
 });
