@@ -1,24 +1,40 @@
 // src/components/focus/FocusTimer.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import RewardConfetti from "./RewardConfetti";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
+const DURATIONS = [
+  { label: "15 min", seconds: 900 },
+  { label: "25 min", seconds: 1500 },
+  { label: "45 min", seconds: 2700 },
+  { label: "60 min", seconds: 3600 },
+];
+
 type Props = {
   mode: "hyper" | "scatter";
 };
 
 export default function FocusTimer({ mode }: Props) {
-  const [seconds, setSeconds] = useState(1500); // 25 minutes default
+  const [selectedDuration, setSelectedDuration] = useState(1500);
+  const [seconds, setSeconds] = useState(1500);
   const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState<number | null>(null);
   const [loadingStart, setLoadingStart] = useState(false);
   const [loadingComplete, setLoadingComplete] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
+
+  // Keep ref in sync so interval closure always has latest sessionId
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   // Timer interval
   useEffect(() => {
@@ -28,7 +44,7 @@ export default function FocusTimer({ mode }: Props) {
       setSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          finishSession();
+          void finishSessionById(sessionIdRef.current);
           return 0;
         }
         return prev - 1;
@@ -53,17 +69,17 @@ export default function FocusTimer({ mode }: Props) {
       }
 
       const data = await res.json();
-      if (!data.sessionId) {
-        throw new Error("No session ID returned");
-      }
+      if (!data.sessionId) throw new Error("No session ID returned");
 
       setSessionId(data.sessionId);
+      setSeconds(selectedDuration);
       setRunning(true);
+      setPaused(false);
       setCompleted(false);
       toast.success("Focus session started!");
-    } catch (err: any) {
-      console.error("Start session error:", err);
-      toast.error(err.message || "Failed to start session");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to start session";
+      toast.error(message);
     } finally {
       setLoadingStart(false);
     }
@@ -71,21 +87,23 @@ export default function FocusTimer({ mode }: Props) {
 
   const pauseSession = () => {
     setRunning(false);
+    setPaused(true);
   };
 
   const resumeSession = () => {
     setRunning(true);
+    setPaused(false);
   };
 
-  const finishSession = async () => {
-    if (!sessionId) return;
-
+  const finishSessionById = async (id: string | null) => {
+    if (!id) return;
     setLoadingComplete(true);
+    setRunning(false);
     try {
       const res = await fetch("/api/sessions/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId: id }),
       });
 
       if (!res.ok) {
@@ -93,16 +111,19 @@ export default function FocusTimer({ mode }: Props) {
         throw new Error(errData.error || "Failed to complete session");
       }
 
+      const data = await res.json();
+      setPointsEarned(data.points ?? null);
       setCompleted(true);
-      setRunning(false);
-      toast.success("Session completed! Great job! 🎉");
-    } catch (err: any) {
-      console.error("Complete session error:", err);
-      toast.error(err.message || "Failed to complete session");
+      toast.success("Session completed! Great job!");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to complete session";
+      toast.error(message);
     } finally {
       setLoadingComplete(false);
     }
   };
+
+  const handleFinishEarly = () => void finishSessionById(sessionId);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -110,12 +131,36 @@ export default function FocusTimer({ mode }: Props) {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
+  const started = sessionId !== null;
+
   return (
     <div className="relative flex flex-col items-center justify-center py-24">
       {/* Background ambient glow */}
       <div className="absolute inset-0 -z-10 flex items-center justify-center">
         <div className="h-125 w-125 rounded-full bg-indigo-500/10 blur-[120px] dark:bg-indigo-600/15" />
       </div>
+
+      {/* Duration selector — only before starting */}
+      {!started && !completed && (
+        <div className="mb-10 flex gap-2">
+          {DURATIONS.map((d) => (
+            <button
+              key={d.seconds}
+              onClick={() => {
+                setSelectedDuration(d.seconds);
+                setSeconds(d.seconds);
+              }}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                selectedDuration === d.seconds
+                  ? "bg-indigo-600 text-white shadow"
+                  : "bg-white/60 text-zinc-600 hover:bg-white dark:bg-zinc-800 dark:text-zinc-300"
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Glass Timer Container */}
       <div className="
@@ -153,7 +198,8 @@ export default function FocusTimer({ mode }: Props) {
 
       {/* Controls */}
       <div className="mt-16 flex flex-col items-center gap-6">
-        {!running && !completed && (
+        {/* Not started yet */}
+        {!started && !completed && (
           <Button
             onClick={startSession}
             disabled={loadingStart}
@@ -164,7 +210,6 @@ export default function FocusTimer({ mode }: Props) {
               text-lg font-semibold text-white shadow-xl
               transition-all duration-300 hover:scale-[1.04] hover:shadow-2xl
               dark:from-indigo-500 dark:to-teal-500
-              dark:hover:from-indigo-600 dark:hover:to-teal-600
             "
           >
             {loadingStart ? (
@@ -178,37 +223,67 @@ export default function FocusTimer({ mode }: Props) {
           </Button>
         )}
 
-        {running && (
+        {/* Running */}
+        {running && !completed && (
           <div className="flex gap-4">
             <Button
               variant="outline"
               size="lg"
               onClick={pauseSession}
-              className="
-                h-16 min-w-48 rounded-full border-white/30 text-lg
-                backdrop-blur-md dark:border-white/20
-              "
+              className="h-16 min-w-48 rounded-full border-white/30 text-lg backdrop-blur-md dark:border-white/20"
             >
-              Pause Session
+              Pause
             </Button>
-
             <Button
               variant="ghost"
               size="lg"
-              onClick={resumeSession}
-              className="h-16 min-w-48 rounded-full text-lg"
+              onClick={handleFinishEarly}
+              disabled={loadingComplete}
+              className="h-16 min-w-48 rounded-full text-lg text-zinc-500"
             >
-              Resume
+              {loadingComplete ? <Loader2 className="h-5 w-5 animate-spin" /> : "Finish Early"}
             </Button>
           </div>
         )}
 
+        {/* Paused */}
+        {paused && !completed && (
+          <div className="flex gap-4">
+            <Button
+              size="lg"
+              onClick={resumeSession}
+              className="
+                h-16 min-w-48 rounded-full
+                bg-linear-to-r from-indigo-600 to-teal-600
+                text-lg font-semibold text-white shadow-xl
+              "
+            >
+              Resume
+            </Button>
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={handleFinishEarly}
+              disabled={loadingComplete}
+              className="h-16 min-w-48 rounded-full text-lg text-zinc-500"
+            >
+              {loadingComplete ? <Loader2 className="h-5 w-5 animate-spin" /> : "Finish Early"}
+            </Button>
+          </div>
+        )}
+
+        {/* Completed */}
         {completed && (
-          <div className="space-y-8 text-center">
+          <div className="space-y-4 text-center">
             <RewardConfetti />
             <p className="text-3xl font-semibold text-emerald-600 dark:text-emerald-400">
               Session Completed ✨
             </p>
+            {pointsEarned !== null && (
+              <p className="text-lg text-zinc-500 dark:text-zinc-400">
+                +{pointsEarned} focus points earned
+              </p>
+            )}
             <Button
               variant="ghost"
               size="lg"
