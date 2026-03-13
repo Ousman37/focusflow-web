@@ -14,6 +14,7 @@ import {
   Zap,
   Play,
   Flame,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -30,6 +31,7 @@ const reflectItems = [
 
 const growthItems = [
   { name: "Progress", href: "/progress", icon: Activity },
+  { name: "Session History", href: "/sessions", icon: History },
   { name: "Rewards", href: "/rewards", icon: Award },
 ];
 

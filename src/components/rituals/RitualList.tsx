@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame } from "lucide-react";
+import { Flame, Trash2 } from "lucide-react";
 
 type Ritual = {
   id: string;
@@ -23,12 +23,14 @@ type RitualListProps = {
   rituals: Ritual[];
   loading: boolean;
   onToggle: (id: string) => void;
+  onDelete?: (id: string) => void;
 };
 
 export default function RitualList({
   rituals,
   loading,
   onToggle,
+  onDelete,
 }: RitualListProps) {
   if (loading) {
     return (
@@ -70,11 +72,22 @@ export default function RitualList({
                   {ritual.frequency}
                 </CardDescription>
               </div>
-              <Checkbox
-                checked={ritual.completedToday}
-                onCheckedChange={() => onToggle(ritual.id)}
-                className="mt-1 border-zinc-300 data-[state=checked]:border-indigo-600 data-[state=checked]:bg-indigo-600"
-              />
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={ritual.completedToday}
+                  onCheckedChange={() => onToggle(ritual.id)}
+                  className="mt-1 border-zinc-300 data-[state=checked]:border-indigo-600 data-[state=checked]:bg-indigo-600"
+                />
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(ritual.id)}
+                    className="mt-1 text-zinc-400 transition-colors hover:text-red-500"
+                    aria-label="Delete ritual"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>

@@ -7,10 +7,9 @@ import RitualList from "@/components/rituals/RitualList";
 import AddRitualDialog from "@/components/rituals/AddRitualDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-// Ritual type (adjust to Prisma later)
 type Ritual = {
   id: string;
   name: string;
@@ -25,62 +24,42 @@ export default function RitualsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetch (replace with Prisma)
-    const fetchData = async () => {
-      await new Promise((r) => setTimeout(r, 1200));
-      setRituals([
-        {
-          id: "1",
-          name: "Morning coffee no phone",
-          frequency: "Daily",
-          completedToday: true,
-          streak: 7,
-        },
-        {
-          id: "2",
-          name: "10 min meditation",
-          frequency: "Daily",
-          completedToday: false,
-          streak: 3,
-        },
-      ]);
-      setLoading(false);
-    };
-    fetchData();
+    fetch("/api/rituals")
+      .then((r) => r.json())
+      .then((data) => setRituals(data))
+      .catch(() => toast.error("Failed to load rituals"))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleAdd = async (data: any) => {
-    // Simulate Prisma create
-    await new Promise((r) => setTimeout(r, 800));
-    const newRitual: Ritual = {
-      id: Date.now().toString(),
-      ...data,
-      completedToday: false,
-      streak: 0,
-    };
+  const handleAdd = async (data: { name: string; description?: string; frequency: string }) => {
+    const res = await fetch("/api/rituals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) { toast.error("Failed to add ritual"); return; }
+    const newRitual = await res.json();
     setRituals((prev) => [...prev, newRitual]);
     toast.success("Ritual added!");
   };
 
-  const handleToggle = (id: string) => {
-    setRituals((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              completedToday: !r.completedToday,
-              streak: !r.completedToday ? r.streak + 1 : 0,
-            }
-          : r
-      )
-    );
-    toast.success("Ritual updated!");
+  const handleToggle = async (id: string) => {
+    const res = await fetch(`/api/rituals/${id}`, { method: "PATCH" });
+    if (!res.ok) { toast.error("Failed to update ritual"); return; }
+    const updated = await res.json();
+    setRituals((prev) => prev.map((r) => (r.id === id ? updated : r)));
+  };
+
+  const handleDelete = async (id: string) => {
+    const res = await fetch(`/api/rituals/${id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to delete ritual"); return; }
+    setRituals((prev) => prev.filter((r) => r.id !== id));
+    toast.success("Ritual deleted");
   };
 
   return (
     <div className="min-h-screen bg-linear-to-br from-zinc-100 via-zinc-200/50 to-zinc-50 px-4 py-10 sm:px-6 lg:px-8 dark:from-zinc-950 dark:via-zinc-900/90 dark:to-zinc-950">
       <div className="mx-auto max-w-5xl space-y-12">
-        {/* Improved Header with Back button */}
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <Button
@@ -94,7 +73,6 @@ export default function RitualsPage() {
                 Back to Dashboard
               </Link>
             </Button>
-
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-zinc-50">
                 Daily Rituals
@@ -104,11 +82,9 @@ export default function RitualsPage() {
               </p>
             </div>
           </div>
-
           <AddRitualDialog onAdd={handleAdd} />
         </div>
 
-        {/* List */}
         {loading ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
@@ -118,8 +94,9 @@ export default function RitualsPage() {
         ) : (
           <RitualList
             rituals={rituals}
-            loading={loading}
+            loading={false}
             onToggle={handleToggle}
+            onDelete={handleDelete}
           />
         )}
       </div>
